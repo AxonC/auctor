@@ -1,4 +1,4 @@
-# Auctor
+# Auctor (WIP)
 
 Generic todo app written in Python using the FastAPI framework. Project is to explore FastAPI and hopefully use a sprinkling of maths to determine which tasks should be done first.
 
