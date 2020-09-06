@@ -23,14 +23,15 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> BaseAPIResp
 
 @app.post("/users", status_code=HTTPStatus.CREATED, dependencies=[Depends(verify_jwt_token)])
 async def create_user(user: UserPayload) -> BaseAPIResponse:
-    user_dict = user.dict()
-    result = await create_new_user(username=user_dict.username, plain_password=user_dict.password, name=user_dict.name)
+    username, password, name = user.dict()
+    result = await create_new_user(username=username, plain_password=password, name=name)
     return result
 
 
 @app.get("/tasks/mine", response_model=List[Task])
 async def get_my_tasks(user: User = Depends(verify_jwt_token), completed: bool = False):
-    return get_tasks_by_user(username=user.username, completed=completed) 
+    """ Get the tasks for a user ordered by their priority """
+    return sorted(get_tasks_by_user(username=user.username, completed=completed), key=lambda task: task.priority)
 
 
 @app.get("/tasks/{task_id}", dependencies=[Depends(verify_jwt_token)], response_model=Task)
@@ -42,9 +43,9 @@ async def get_task(task_id: UUID) -> BaseAPIResponse:
 
 
 @app.post("/tasks", status_code=HTTPStatus.CREATED)
-async def create_new_task(task: BaseTask, user = Depends(verify_jwt_token)) -> BaseAPIResponse:
+async def create_new_task(task: BaseTask, user = Depends(verify_jwt_token)):
     result = create_task(task_body=task, username=user.username)
-    return {"task_id": result.get('id', None)}
+    return {"id": result.get('id', None)}
 
 
 @app.patch("/tasks/{task_id}/complete", dependencies=[Depends(verify_jwt_token)], status_code=HTTPStatus.NO_CONTENT)
