@@ -29,9 +29,8 @@ async def create_user(user: UserPayload) -> BaseAPIResponse:
 
 
 @app.get("/tasks/mine", response_model=List[Task])
-async def get_my_tasks(user: User = Depends(verify_jwt_token)):
-    tasks = get_tasks_by_user(username=user.username)
-    return tasks
+async def get_my_tasks(user: User = Depends(verify_jwt_token), completed: bool = False):
+    return get_tasks_by_user(username=user.username, completed=completed) 
 
 
 @app.get("/tasks/{task_id}", dependencies=[Depends(verify_jwt_token)], response_model=Task)

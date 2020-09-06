@@ -38,20 +38,27 @@ def get_task_by_id(connection: object, cursor: object, id: str):
 
 
 @database_query
-def get_tasks_by_user(connection: object, cursor: object, username: str):
+def get_tasks_by_user(connection: object, cursor: object, username: str, completed: bool = False):
     """ Retrieve the tasks of a given user, querying on their ID """
-    cursor.execute("SELECT id, name, username, description, priority, duration, due_date, completed_at FROM tasks WHERE username = %s", (username,))
+    if completed:
+        query = ("SELECT id, name, username, description, priority, duration, due_date, completed_at FROM tasks WHERE username = %s AND completed_at IS NOT NULL")
+    else:
+        query = ("SELECT id, name, username, description, priority, duration, due_date, completed_at FROM tasks WHERE username = %s AND completed_at IS NULL")
+
+    cursor.execute(query, (username,))
     return [Task(**row) for row in cursor.fetchall()]
 
 
 @database_query
 def get_user_by_username(connection: object, cursor: object, username: str):
+    """ Get a user from the database by its username """
     cursor.execute("SELECT username, password, name FROM users WHERE username = %s", (username,))
     return cursor.fetchone()
 
 
 @database_query
 def create_user(connection: object, cursor: object, user: UserPayload):
+    """ Create a user into the database """
     cursor.execute("INSERT INTO users (username, password, name) VALUES (%s, %s, %s) RETURNING username", (user.username, user.password, user.name,))
     connection.commit()
     return dict(cursor.fetchone()).get('username', None)
@@ -59,6 +66,7 @@ def create_user(connection: object, cursor: object, user: UserPayload):
 
 @database_query
 def create_task(connection: object, cursor: object, task_body: BaseTask, username: str):
+    """ Create a task with the given task information for a user. """
     args = (task_body.name, task_body.description,  username, task_body.priority, task_body.duration, task_body.due_date,)
     cursor.execute("INSERT INTO tasks (name, description, username, priority, duration, due_date) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id", args)
     connection.commit()
