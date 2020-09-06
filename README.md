@@ -1,14 +1,14 @@
 # Auctor (WIP)
 
-Generic todo app written in Python using the FastAPI framework. Project is to explore FastAPI and hopefully use a sprinkling of maths to determine which tasks should be done first.
+Generic todo API written in Python using the FastAPI framework. Project is to explore FastAPI and hopefully use a sprinkling of maths to determine which tasks should be done first.
 
-## Development
+## Development - Backend
 Opens the unicorn web server on port 8000.
 ```
 cd src/ && unicorn main:app --port 8000 --reload
 ```
 
-## Deployment
+### Deployment
 Deployment can be performed by building a docker container.
 ```docker
 cd src/ && docker build -t auctor-api .
@@ -24,7 +24,7 @@ auctor-api
 ```
 
 
-### Environment Variables
+#### Environment Variables
 All generally self-explanatory. Host must generally be on the same docker network if run in conjunction with other containers.
 
 Secret key is used for password hashing & JWT generation.
