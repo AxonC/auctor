@@ -1,17 +1,30 @@
+import logging
 from http import HTTPStatus
 
-from fastapi import FastAPI, Depends, HTTPException, Header
+from fastapi import FastAPI, Depends, HTTPException, Header, Body
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 from uuid import UUID
 from datetime import datetime, timedelta
 from typing import List
 
-from models import BaseAPIResponse, UserPayload, BaseTask, User, Task
-from queries import get_task_by_id, create_task, get_tasks_by_user, set_task_complete, set_task_incomplete
+from models import BaseAPIResponse, UserPayload, BaseTask, User, Task, TaskComment
+from queries import get_task_by_id, create_task, get_tasks_by_user, set_task_complete, set_task_incomplete, add_task_comment, \
+    get_task_comments
 from authentication import authenticate_user, create_access_token, create_new_user, verify_jwt_token
 
+LOGGER = logging.getLogger(__name__)
+
 app = FastAPI()
+
+
+async def verify_task(task_id: UUID) -> Task:
+    """ Helper function to get the details of a given task for use in API function. If not found, throw 404 Not Found exception."""
+    task = get_task_by_id(id=task_id)
+    if task is None:
+        LOGGER.debug("Task not found for ID %s", task_id)
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Task not found.")
+    return Task(**task)
 
 @app.post("/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> BaseAPIResponse:
@@ -22,7 +35,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> BaseAPIResp
     return BaseAPIResponse(data={"access_token": access_token, "token_type": "bearer"}, status=HTTPStatus.OK)
 
 @app.post("/users", status_code=HTTPStatus.CREATED, dependencies=[Depends(verify_jwt_token)])
-async def create_user(user: UserPayload) -> BaseAPIResponse:
+async def create_user(user: UserPayload):
     username, password, name = user.dict()
     result = await create_new_user(username=username, plain_password=password, name=name)
     return result
@@ -35,11 +48,8 @@ async def get_my_tasks(user: User = Depends(verify_jwt_token), completed: bool =
 
 
 @app.get("/tasks/{task_id}", dependencies=[Depends(verify_jwt_token)], response_model=Task)
-async def get_task(task_id: UUID) -> BaseAPIResponse:
-    task = get_task_by_id(id=task_id)
-    if task is None:
-        return HTTPException(HTTPStatus.NOT_FOUND)
-    return task
+async def get_task(task: Task = Depends(verify_task)) -> BaseAPIResponse:
+    return get_task_by_id(id=task.id)
 
 
 @app.post("/tasks", status_code=HTTPStatus.CREATED)
@@ -48,19 +58,23 @@ async def create_new_task(task: BaseTask, user = Depends(verify_jwt_token)):
     return {"id": result.get('id', None)}
 
 
-@app.patch("/tasks/{task_id}/complete", dependencies=[Depends(verify_jwt_token)], status_code=HTTPStatus.NO_CONTENT)
-async def complete_task(task_id: UUID):
-    completed_task = set_task_complete(task_id=task_id)
+@app.get("/tasks/{task_id}/comments", dependencies=[Depends(verify_jwt_token)], response_model=List[TaskComment])
+async def get_comments_for_task(task: Task = Depends(verify_task)):
+    return get_task_comments(task_id=task.id)
 
-    if completed_task is None:
-        return HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Task not found.")
-    return None
+
+@app.patch("/tasks/{task_id}/comments", dependencies=[Depends(verify_jwt_token)], response_model=TaskComment)
+async def add_new_task_comment(task: Task = Depends(verify_task), contents: str = Body(..., embed=True)): # embed is required as the payload only contains one key.
+    """ Append a comment to an existing task """
+    return add_task_comment(task_id=task.id, contents=contents)
+
+
+@app.patch("/tasks/{task_id}/complete", dependencies=[Depends(verify_jwt_token)], status_code=HTTPStatus.NO_CONTENT)
+async def complete_task(task: Task = Depends(verify_task)):
+    return set_task_complete(task_id=task.id)
 
 
 @app.delete("/tasks/{task_id}/complete", dependencies=[Depends(verify_jwt_token)], status_code=HTTPStatus.NO_CONTENT)
-async def uncomplete_task(task_id: UUID):
-    uncompleted_task = set_task_incomplete(task_id=task_id)
+async def uncomplete_task(task: Task = Depends(verify_task)):
+    return set_task_incomplete(task_id=task.id)
 
-    if uncompleted_task is None:
-        return HTTPException(HTTPStatus.NOT_FOUND, detail="Task not found.")
-    return None

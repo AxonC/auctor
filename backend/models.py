@@ -30,3 +30,9 @@ class UserPayload(BaseModel):
     username: str
     password: str
     name: str
+
+class TaskComment(BaseModel):
+    id: UUID
+    task_id: UUID
+    contents: str
+    created_at: datetime

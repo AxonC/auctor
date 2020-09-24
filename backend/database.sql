@@ -8,8 +8,15 @@ CREATE TABLE tasks (
     username varchar(60) NOT NULL,
     priority smallint NOT NULL,
     duration smallint NOT NULL,
-    due_date timestamp NOT NULL,
-    completed_at timestamp
+    due_date timestamptz NOT NULL,
+    completed_at timestamptz
+);
+
+CREATE TABLE tasks_comments (
+    id uuid CONSTRAINT task_comments_pk PRIMARY KEY DEFAULT uuid_generate_v4(),
+    task_id uuid NOT NULL,
+    contents text NOT NULL,
+    created_at timestamptz
 );
 
 CREATE TABLE users (
