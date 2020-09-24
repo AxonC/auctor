@@ -77,7 +77,7 @@ def create_task(connection: object, cursor: object, task_body: BaseTask, usernam
 @database_query
 def set_task_complete(connection: object, cursor: object, task_id: UUID):
     """ Mark a given task as completed """
-    completion_time = datetime.utcnow().isoformat()
+    completion_time = datetime.now().astimezone().isoformat()
     cursor.execute("UPDATE tasks SET completed_at = %s WHERE id = %s;", (completion_time,task_id))
     connection.commit()
     return True
