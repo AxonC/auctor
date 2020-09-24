@@ -1,13 +1,8 @@
 from pydantic import BaseModel
-from typing import Any, Optional
+from typing import Optional
 
 from uuid import UUID
 from datetime import date, datetime
-
-class BaseAPIResponse(BaseModel):
-    status: int
-    data: Optional[Any]
-    message: Optional[str]
 
 class BaseTask(BaseModel):
     name: str
@@ -25,11 +20,6 @@ class User(BaseModel):
     username: str
     name: str
     password: str
-    
-class UserPayload(BaseModel):
-    username: str
-    password: str
-    name: str
 
 class TaskComment(BaseModel):
     id: UUID

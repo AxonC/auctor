@@ -6,7 +6,7 @@ from datetime import datetime
 
 from config import POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_DATABASE, POSTGRES_PASSWORD
 
-from models import UserPayload, BaseTask, Task, TaskComment
+from models import BaseTask, Task, TaskComment, User
 
 LOGGER = logging.getLogger(__name__)
 
@@ -59,10 +59,11 @@ def get_user_by_username(connection: object, cursor: object, username: str):
 
 
 @database_query
-def create_user(connection: object, cursor: object, user: UserPayload):
+def create_user(connection: object, cursor: object, user: User):
     """ Create a user into the database """
     cursor.execute("INSERT INTO users (username, password, name) VALUES (%s, %s, %s) RETURNING username", (user.username, user.password, user.name,))
     connection.commit()
+    LOGGER.info("Created new user.")
     return dict(cursor.fetchone()).get('username', None)
 
 
@@ -72,6 +73,7 @@ def create_task(connection: object, cursor: object, task_body: BaseTask, usernam
     args = (task_body.name, task_body.description,  username, task_body.priority, task_body.duration, task_body.due_date,)
     cursor.execute("INSERT INTO tasks (name, description, username, priority, duration, due_date) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id", args)
     connection.commit()
+    LOGGER.info("Created a new task.")
     return dict(cursor.fetchone())
 
 @database_query
@@ -80,6 +82,7 @@ def set_task_complete(connection: object, cursor: object, task_id: UUID):
     completion_time = datetime.now().astimezone().isoformat()
     cursor.execute("UPDATE tasks SET completed_at = %s WHERE id = %s;", (completion_time,task_id))
     connection.commit()
+    LOGGER.info("Set task %s to complete", task_id)
     return True
 
 @database_query
@@ -87,6 +90,7 @@ def set_task_incomplete(connection: object, cursor: object, task_id: UUID):
     """ Mark a given task as incomplete """
     cursor.execute("UPDATE tasks SET completed_at = NULL WHERE id = %s;", (task_id,))
     connection.commit()
+    LOGGER.info("Set task %s to incomplete", task_id)
     return True
 
 @database_query
@@ -94,7 +98,7 @@ def add_task_comment(connection: object, cursor: object, task_id: UUID, contents
     """ Add a comment to a pre-existing task """
     current_time = datetime.now().astimezone().isoformat()
     cursor.execute("INSERT INTO tasks_comments (task_id, contents, created_at) VALUES (%s, %s, %s) RETURNING id, task_id, contents, created_at", (task_id, contents, current_time))
-    LOGGER.debug("Comment with task %s added", task_id)
+    LOGGER.info("Comment with task %s added", task_id)
     connection.commit()
     return TaskComment(**cursor.fetchone())
 
@@ -102,6 +106,6 @@ def add_task_comment(connection: object, cursor: object, task_id: UUID, contents
 def get_task_comments(connection: object, cursor: object, task_id: UUID):
     """ Get the comments created against a task """
     cursor.execute("SELECT tasks_comments.id, tasks_comments.task_id, tasks_comments.contents, tasks_comments.created_at FROM tasks_comments JOIN tasks ON tasks.id = task_id WHERE (task_id = %s)", (task_id,))
-    LOGGER.debug('Comments retrieved for task id %s', task_id)
+    LOGGER.info('Comments retrieved for task id %s', task_id)
 
     return [TaskComment(**row) for row in cursor.fetchall()]

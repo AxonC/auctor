@@ -8,7 +8,7 @@ from uuid import UUID
 from datetime import datetime, timedelta
 from typing import List
 
-from models import BaseAPIResponse, UserPayload, BaseTask, User, Task, TaskComment
+from models import BaseTask, User, Task, TaskComment
 from queries import get_task_by_id, create_task, get_tasks_by_user, set_task_complete, set_task_incomplete, add_task_comment, \
     get_task_comments
 from authentication import authenticate_user, create_access_token, create_new_user, verify_jwt_token
@@ -27,15 +27,16 @@ async def verify_task(task_id: UUID) -> Task:
     return Task(**task)
 
 @app.post("/token")
-async def login(form_data: OAuth2PasswordRequestForm = Depends()) -> BaseAPIResponse:
+async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     user = authenticate_user(form_data.username, form_data.password)
     if user is None:
+        LOGGER.debug("User authentication failed for %s", form_data.username)
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail="Username not found")
     access_token = create_access_token(username=user.username)
-    return BaseAPIResponse(data={"access_token": access_token, "token_type": "bearer"}, status=HTTPStatus.OK)
+    return {"access_token": access_token, "token_type": "bearer"}
 
 @app.post("/users", status_code=HTTPStatus.CREATED, dependencies=[Depends(verify_jwt_token)])
-async def create_user(user: UserPayload):
+async def create_user(user: User):
     username, password, name = user.dict()
     result = await create_new_user(username=username, plain_password=password, name=name)
     return result
@@ -48,7 +49,7 @@ async def get_my_tasks(user: User = Depends(verify_jwt_token), completed: bool =
 
 
 @app.get("/tasks/{task_id}", dependencies=[Depends(verify_jwt_token)], response_model=Task)
-async def get_task(task: Task = Depends(verify_task)) -> BaseAPIResponse:
+async def get_task(task: Task = Depends(verify_task)):
     return get_task_by_id(id=task.id)
 
 
@@ -63,7 +64,7 @@ async def get_comments_for_task(task: Task = Depends(verify_task)):
     return get_task_comments(task_id=task.id)
 
 
-@app.patch("/tasks/{task_id}/comments", dependencies=[Depends(verify_jwt_token)], response_model=TaskComment)
+@app.post("/tasks/{task_id}/comments", dependencies=[Depends(verify_jwt_token)], response_model=TaskComment)
 async def add_new_task_comment(task: Task = Depends(verify_task), contents: str = Body(..., embed=True)): # embed is required as the payload only contains one key.
     """ Append a comment to an existing task """
     return add_task_comment(task_id=task.id, contents=contents)

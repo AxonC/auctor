@@ -6,7 +6,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from datetime import timedelta, datetime
 
-from models import User, UserPayload
+from models import User 
 from queries import get_user_by_username, create_user
 
 from pydantic import ValidationError
@@ -39,7 +39,7 @@ def create_access_token(username: str, token_lifespan = 30):
 
 def create_new_user(username: str, plain_password: str, name: str):
     hashed_password = pwd_context.hash(plain_password)
-    return create_user(user=UserPayload(username=username, password=hashed_password, name=name))
+    return create_user(user=User(username=username, password=hashed_password, name=name))
 
 def verify_jwt_token(token: str = Depends(oauth2_scheme)) -> User:
     """ Verify the given JWT token, returning the corresponding user if
